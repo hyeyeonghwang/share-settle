@@ -11,6 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EventsIndexRouteImport } from './routes/events.index'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as EventsEventIdIndexRouteImport } from './routes/events.$eventId.index'
+import { Route as EventsEventIdMembersRouteImport } from './routes/events.$eventId.members'
+import { Route as EventsEventIdSettlementRouteImport } from './routes/events.$eventId.settlement'
+import { Route as EventsEventIdExpensesExpenseIdRouteImport } from './routes/events.$eventId.expenses.$expenseId'
+import { Route as EventsEventIdExpensesNewRouteImport } from './routes/events.$eventId.expenses.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +28,112 @@ const EventsIndexRoute = EventsIndexRouteImport.update({
   path: '/events/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdIndexRoute = EventsEventIdIndexRouteImport.update({
+  id: '/events/$eventId/',
+  path: '/events/$eventId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdMembersRoute = EventsEventIdMembersRouteImport.update({
+  id: '/events/$eventId/members',
+  path: '/events/$eventId/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdSettlementRoute = EventsEventIdSettlementRouteImport.update({
+  id: '/events/$eventId/settlement',
+  path: '/events/$eventId/settlement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdExpensesExpenseIdRoute =
+  EventsEventIdExpensesExpenseIdRouteImport.update({
+    id: '/events/$eventId/expenses/$expenseId',
+    path: '/events/$eventId/expenses/$expenseId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const EventsEventIdExpensesNewRoute =
+  EventsEventIdExpensesNewRouteImport.update({
+    id: '/events/$eventId/expenses/new',
+    path: '/events/$eventId/expenses/new',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/join/$code': typeof JoinCodeRoute
   '/events/': typeof EventsIndexRoute
+  '/events/$eventId/members': typeof EventsEventIdMembersRoute
+  '/events/$eventId/settlement': typeof EventsEventIdSettlementRoute
+  '/events/$eventId/': typeof EventsEventIdIndexRoute
+  '/events/$eventId/expenses/$expenseId': typeof EventsEventIdExpensesExpenseIdRoute
+  '/events/$eventId/expenses/new': typeof EventsEventIdExpensesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/join/$code': typeof JoinCodeRoute
   '/events': typeof EventsIndexRoute
+  '/events/$eventId/members': typeof EventsEventIdMembersRoute
+  '/events/$eventId/settlement': typeof EventsEventIdSettlementRoute
+  '/events/$eventId': typeof EventsEventIdIndexRoute
+  '/events/$eventId/expenses/$expenseId': typeof EventsEventIdExpensesExpenseIdRoute
+  '/events/$eventId/expenses/new': typeof EventsEventIdExpensesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/join/$code': typeof JoinCodeRoute
   '/events/': typeof EventsIndexRoute
+  '/events/$eventId/members': typeof EventsEventIdMembersRoute
+  '/events/$eventId/settlement': typeof EventsEventIdSettlementRoute
+  '/events/$eventId/': typeof EventsEventIdIndexRoute
+  '/events/$eventId/expenses/$expenseId': typeof EventsEventIdExpensesExpenseIdRoute
+  '/events/$eventId/expenses/new': typeof EventsEventIdExpensesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/events/'
+  fullPaths:
+    | '/'
+    | '/join/$code'
+    | '/events/'
+    | '/events/$eventId/members'
+    | '/events/$eventId/settlement'
+    | '/events/$eventId/'
+    | '/events/$eventId/expenses/$expenseId'
+    | '/events/$eventId/expenses/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/events'
-  id: '__root__' | '/' | '/events/'
+  to:
+    | '/'
+    | '/join/$code'
+    | '/events'
+    | '/events/$eventId/members'
+    | '/events/$eventId/settlement'
+    | '/events/$eventId'
+    | '/events/$eventId/expenses/$expenseId'
+    | '/events/$eventId/expenses/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/join/$code'
+    | '/events/'
+    | '/events/$eventId/members'
+    | '/events/$eventId/settlement'
+    | '/events/$eventId/'
+    | '/events/$eventId/expenses/$expenseId'
+    | '/events/$eventId/expenses/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   EventsIndexRoute: typeof EventsIndexRoute
+  EventsEventIdMembersRoute: typeof EventsEventIdMembersRoute
+  EventsEventIdSettlementRoute: typeof EventsEventIdSettlementRoute
+  EventsEventIdIndexRoute: typeof EventsEventIdIndexRoute
+  EventsEventIdExpensesExpenseIdRoute: typeof EventsEventIdExpensesExpenseIdRoute
+  EventsEventIdExpensesNewRoute: typeof EventsEventIdExpensesNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +152,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId/': {
+      id: '/events/$eventId/'
+      path: '/events/$eventId'
+      fullPath: '/events/$eventId/'
+      preLoaderRoute: typeof EventsEventIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId/members': {
+      id: '/events/$eventId/members'
+      path: '/events/$eventId/members'
+      fullPath: '/events/$eventId/members'
+      preLoaderRoute: typeof EventsEventIdMembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId/settlement': {
+      id: '/events/$eventId/settlement'
+      path: '/events/$eventId/settlement'
+      fullPath: '/events/$eventId/settlement'
+      preLoaderRoute: typeof EventsEventIdSettlementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId/expenses/$expenseId': {
+      id: '/events/$eventId/expenses/$expenseId'
+      path: '/events/$eventId/expenses/$expenseId'
+      fullPath: '/events/$eventId/expenses/$expenseId'
+      preLoaderRoute: typeof EventsEventIdExpensesExpenseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId/expenses/new': {
+      id: '/events/$eventId/expenses/new'
+      path: '/events/$eventId/expenses/new'
+      fullPath: '/events/$eventId/expenses/new'
+      preLoaderRoute: typeof EventsEventIdExpensesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  JoinCodeRoute: JoinCodeRoute,
   EventsIndexRoute: EventsIndexRoute,
+  EventsEventIdMembersRoute: EventsEventIdMembersRoute,
+  EventsEventIdSettlementRoute: EventsEventIdSettlementRoute,
+  EventsEventIdIndexRoute: EventsEventIdIndexRoute,
+  EventsEventIdExpensesExpenseIdRoute: EventsEventIdExpensesExpenseIdRoute,
+  EventsEventIdExpensesNewRoute: EventsEventIdExpensesNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
