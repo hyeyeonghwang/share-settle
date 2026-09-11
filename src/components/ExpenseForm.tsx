@@ -35,6 +35,12 @@ export function ExpenseForm({
 }) {
   const currency = event.currency;
   const activeMembers = members.filter((m) => m.status === "ACTIVE");
+  const payerOptions = initial
+    ? members.filter(
+        (member) =>
+          member.status === "ACTIVE" || member.userId === initial.expense.payerId,
+      )
+    : activeMembers;
 
   const [title, setTitle] = useState(initial?.expense.title ?? "");
   const [amountText, setAmountText] = useState(
@@ -158,7 +164,7 @@ export function ExpenseForm({
               aria-label="Paid by"
               className="h-14 w-full rounded-xl border border-line bg-paper px-4 text-sm outline-none focus:border-ink"
             >
-              {members.map((m) => (
+              {payerOptions.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   {m.user.displayName}
                   {m.status === "INACTIVE" ? " (inactive)" : ""}

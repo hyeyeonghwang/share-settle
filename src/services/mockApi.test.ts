@@ -51,6 +51,9 @@ describe("MockExpenseSplitterApi flows", () => {
     await api.signInAs("u_younghee");
     await api.setEventStatus("e_jeju", "COMPLETED");
     await expect(
+      api.setMemberStatus("e_jeju", "u_chulsoo", "INACTIVE"),
+    ).rejects.toThrow("completed and locked");
+    await expect(
       api.createExpense("e_jeju", {
         title: "Locked",
         totalAmount: 100,

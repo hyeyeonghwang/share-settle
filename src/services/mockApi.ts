@@ -488,6 +488,8 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const event = this.requireEvent(eventId);
     if (event.createdBy !== me.id)
       throw new ServiceError("Only the event creator can manage participants.");
+    if (event.status === "COMPLETED")
+      throw new ServiceError("This event is completed and locked.");
     const member = this.requireMembership(eventId, userId);
     member.status = status;
     member.deactivatedAt = status === "INACTIVE" ? now() : null;
