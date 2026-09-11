@@ -148,9 +148,14 @@ export function computeTransfers(balances: Balance[]): Transfer[] {
     const debtor = debtors[di];
     const amount = Math.min(creditor.amount, debtor.amount);
     if (amount > 0) {
+      const from = byId.get(debtor.id);
+      const to = byId.get(creditor.id);
+      if (!from || !to) {
+        throw new Error("Settlement references an unknown user.");
+      }
       transfers.push({
-        from: byId.get(debtor.id)!,
-        to: byId.get(creditor.id)!,
+        from,
+        to,
         amount,
       });
     }
