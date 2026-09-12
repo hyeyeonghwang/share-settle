@@ -115,6 +115,9 @@ function MembersBody() {
                       status: member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
                     })
                   }
+                  aria-label={`${
+                    member.status === "ACTIVE" ? "Deactivate" : "Reactivate"
+                  } ${member.user.displayName}`}
                   disabled={setStatus.isPending}
                   className="h-10 rounded-lg border border-line px-4 text-sm font-medium transition-colors hover:bg-fill disabled:opacity-60"
                 >

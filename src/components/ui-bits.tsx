@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { CurrencyCode, User } from "@/domain/types";
-import { formatMoney } from "@/domain/money";
+import { CURRENCIES, formatMoney } from "@/domain/money";
 
 export function Initial({
   user,
@@ -43,9 +43,12 @@ export function Amount({
   signed?: boolean;
   className?: string;
 }) {
+  const sign = value < 0 ? "−" : signed && value > 0 ? "+" : "";
   return (
     <span className={cn("num", className)}>
-      {formatMoney(value, currency, { signed })}
+      {sign}
+      <span className="mr-[0.28em] inline-block">{CURRENCIES[currency].symbol}</span>
+      {formatMoney(Math.abs(value), currency, { withSymbol: false })}
     </span>
   );
 }
@@ -72,7 +75,8 @@ export function PageHeader({
           <Link
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             to={backTo as any}
-            params={backParams}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            {...(backParams ? { params: backParams as any } : {})}
             className="mb-2 inline-block font-mono text-[11px] text-muted-foreground transition-colors hover:text-ink"
           >
             ← {backLabel ?? "Back"}
