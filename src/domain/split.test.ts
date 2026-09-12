@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { computeShares, computeTransfers, splitEqually, validateExpense } from "./split";
 import type { Balance, ExpenseInput, User } from "./types";
 
-const users: User[] = [
+const [ua, ub, uc] = [
   { id: "a", displayName: "A", email: "a@example.com", authProvider: "test", createdAt: "2026-01-01" },
   { id: "b", displayName: "B", email: "b@example.com", authProvider: "test", createdAt: "2026-01-01" },
   { id: "c", displayName: "C", email: "c@example.com", authProvider: "test", createdAt: "2026-01-01" },
   { id: "d", displayName: "D", email: "d@example.com", authProvider: "test", createdAt: "2026-01-01" },
-];
+] as const satisfies readonly User[];
 
 describe("expense splitting", () => {
   it("distributes an integer remainder using stable participant order", () => {
@@ -57,14 +57,14 @@ describe("expense splitting", () => {
 describe("settlement transfers", () => {
   it("creates deterministic transfers that settle every balance", () => {
     const balances: Balance[] = [
-      { user: users[0], paid: 180_000, owed: 110_000, balance: 70_000 },
-      { user: users[1], paid: 50_000, owed: 100_000, balance: -50_000 },
-      { user: users[2], paid: 70_000, owed: 90_000, balance: -20_000 },
+      { user: ua, paid: 180_000, owed: 110_000, balance: 70_000 },
+      { user: ub, paid: 50_000, owed: 100_000, balance: -50_000 },
+      { user: uc, paid: 70_000, owed: 90_000, balance: -20_000 },
     ];
 
     expect(computeTransfers(balances)).toEqual([
-      { from: users[1], to: users[0], amount: 50_000 },
-      { from: users[2], to: users[0], amount: 20_000 },
+      { from: ub, to: ua, amount: 50_000 },
+      { from: uc, to: ua, amount: 20_000 },
     ]);
   });
 });
