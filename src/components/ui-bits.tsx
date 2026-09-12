@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { CurrencyCode, User } from "@/domain/types";
-import { formatMoney } from "@/domain/money";
+import { CURRENCIES, formatMoney } from "@/domain/money";
 
 export function Initial({
   user,
