@@ -43,9 +43,12 @@ export function Amount({
   signed?: boolean;
   className?: string;
 }) {
+  const sign = value < 0 ? "−" : signed && value > 0 ? "+" : "";
   return (
     <span className={cn("num", className)}>
-      {formatMoney(value, currency, { signed })}
+      {sign}
+      <span className="mr-[0.12em] inline-block">{CURRENCIES[currency].symbol}</span>
+      {formatMoney(Math.abs(value), currency, { withSymbol: false })}
     </span>
   );
 }
