@@ -20,7 +20,7 @@
 
   --font-display: "Fraunces", ui-serif, Georgia, serif;
   --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-mono: "IBM Plex Mono", "Noto Sans Mono", ui-monospace, SFMono-Regular, monospace;
   --font-sans: var(--font-body);
 
   --color-paper: var(--paper);
