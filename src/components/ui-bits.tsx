@@ -75,7 +75,7 @@ export function PageHeader({
           <Link
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             to={backTo as any}
-            params={backParams}
+            {...(backParams ? { params: backParams } : {})}
             className="mb-2 inline-block font-mono text-[11px] text-muted-foreground transition-colors hover:text-ink"
           >
             ← {backLabel ?? "Back"}

@@ -146,6 +146,7 @@ export function computeTransfers(balances: Balance[]): Transfer[] {
   while (ci < creditors.length && di < debtors.length) {
     const creditor = creditors[ci];
     const debtor = debtors[di];
+    if (!creditor || !debtor) break;
     const amount = Math.min(creditor.amount, debtor.amount);
     if (amount > 0) {
       const from = byId.get(debtor.id);
