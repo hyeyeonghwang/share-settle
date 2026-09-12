@@ -47,7 +47,7 @@ export function Amount({
   return (
     <span className={cn("num", className)}>
       {sign}
-      <span className="mr-[0.12em] inline-block">{CURRENCIES[currency].symbol}</span>
+      <span className="mr-[0.28em] inline-block">{CURRENCIES[currency].symbol}</span>
       {formatMoney(Math.abs(value), currency, { withSymbol: false })}
     </span>
   );
