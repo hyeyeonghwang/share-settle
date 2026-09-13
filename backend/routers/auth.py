@@ -29,7 +29,7 @@ def demo(body: DemoSignIn, response: Response) -> User:
 
 @router.get("/demo/accounts", response_model=list[User])
 def demo_accounts() -> list[User]:
-    return list(store.users.values())
+    return store.all_users()
 
 
 @router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)

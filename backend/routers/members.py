@@ -12,6 +12,8 @@ def set_status(event_id: str, user_id: str, body: MemberStatusInput, user: User 
     store.ensure_creator(event, user)
     store.ensure_open(event)
     member = store.membership(event_id, user_id)
-    member.status = body.status
-    member.deactivatedAt = now() if body.status == "INACTIVE" else None
+    from ..database import MemberRow, SessionLocal
+    with SessionLocal() as session:
+        row = session.get(MemberRow, member.id); row.status = body.status; row.deactivated_at = now() if body.status == "INACTIVE" else None; session.commit(); session.refresh(row)
+        member = store._member(row)
     return MemberView(**member.model_dump(), user=store.users[user_id], isCreator=user_id == event.createdBy)

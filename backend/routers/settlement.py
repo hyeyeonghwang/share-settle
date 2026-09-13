@@ -13,8 +13,7 @@ def settlement(event_id: str, user: User = Depends(require_user)) -> Settlement:
     order = store.member_order(event_id)
     paid = {uid: 0 for uid in order}
     owed = {uid: 0 for uid in order}
-    for expense in store.expenses.values():
-        if expense.eventId != event_id: continue
+    for expense in store.expenses_for_event(event_id):
         paid[expense.payerId] += expense.totalAmount
         for uid, amount in store.shares(expense).items(): owed[uid] += amount
     balances = [Balance(user=store.users[uid], paid=paid[uid], owed=owed[uid], balance=paid[uid] - owed[uid]) for uid in order]

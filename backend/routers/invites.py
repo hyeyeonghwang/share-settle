@@ -8,9 +8,12 @@ router = APIRouter(prefix="/invites", tags=["Invitations"])
 
 
 def find(code: str) -> EventRecord:
-    for event in store.events.values():
-        if event.inviteCode == code.strip().upper():
-            return event
+    from sqlalchemy import select
+    from ..database import EventRow, SessionLocal
+    with SessionLocal() as session:
+        row = session.scalar(select(EventRow).where(EventRow.invite_code == code.strip().upper()))
+    if row:
+        return store._event(row)
     from fastapi import HTTPException
     raise HTTPException(404, "That invite code doesn't match any event.")
 
@@ -18,17 +21,19 @@ def find(code: str) -> EventRecord:
 @router.get("/{code}", response_model=InvitePreview)
 def preview(code: str, user: User = Depends(require_user)) -> InvitePreview:
     event = find(code)
-    return InvitePreview(event=event, memberCount=sum(m.eventId == event.id for m in store.members.values()), alreadyMember=any(m.eventId == event.id and m.userId == user.id for m in store.members.values()))
+    members = store.members_for_event(event.id)
+    return InvitePreview(event=event, memberCount=len(members), alreadyMember=any(m.userId == user.id for m in members))
 
 
 @router.post("/{code}", response_model=EventRecord)
 def join(code: str, user: User = Depends(require_user)) -> EventRecord:
     event = find(code)
-    existing = next((m for m in store.members.values() if m.eventId == event.id and m.userId == user.id), None)
+    existing = next((m for m in store.members_for_event(event.id) if m.userId == user.id), None)
+    from ..database import MemberRow, SessionLocal
     if existing:
-        existing.status = "ACTIVE"
-        existing.deactivatedAt = None
+        with SessionLocal() as session:
+            row = session.get(MemberRow, existing.id); row.status = "ACTIVE"; row.deactivated_at = None; session.commit()
     else:
-        member = __import__("backend.models", fromlist=["EventMember"]).EventMember(id=store.key("m"), eventId=event.id, userId=user.id, status="ACTIVE", joinedAt=now())
-        store.members[member.id] = member
+        with SessionLocal() as session:
+            session.add(MemberRow(id=store.key("m"), event_id=event.id, user_id=user.id, status="ACTIVE", joined_at=now())); session.commit()
     return event
