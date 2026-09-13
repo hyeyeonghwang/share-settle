@@ -63,7 +63,26 @@ export class HttpExpenseSplitterApi implements ExpenseSplitterApi {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!response.ok) throw new Error("Unable to sign in.");
+    if (!response.ok) {
+      let message = `Request failed (${response.status}).`;
+      try {
+        const error = (await response.json()) as {
+          detail?: string | { msg?: string }[];
+          message?: string;
+        };
+        if (typeof error.message === "string") message = error.message;
+        else if (typeof error.detail === "string") message = error.detail;
+        else if (Array.isArray(error.detail))
+          message =
+            error.detail
+              .map((item) => item.msg)
+              .filter(Boolean)
+              .join(" ") || message;
+      } catch {
+        // Keep the status-based message when the server has no JSON error body.
+      }
+      throw new Error(message);
+    }
     const token = response.headers.get("X-Auth-Token");
     if (!token) throw new Error("Sign-in response did not include an auth token.");
     this.setToken(token);
