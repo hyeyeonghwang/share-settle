@@ -1,0 +1,650 @@
+openapi: 3.1.0
+info:
+  title: Share & Settle API
+  version: 1.0.0
+  description: |
+    HTTP contract expected by the Share & Settle frontend. Monetary values are
+    integers in the event currency's minor unit. The frontend currently ships
+    with an in-memory mock implementation; this document defines the backend
+    implementation that can replace it.
+servers:
+  - url: /api
+    description: API base path
+tags:
+  - name: Authentication
+  - name: Events
+  - name: Invitations
+  - name: Members
+  - name: Expenses
+  - name: Settlement
+security:
+  - bearerAuth: []
+paths:
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get the current user
+      description: Returns null when there is no authenticated session.
+      security: []
+      responses:
+        '200':
+          description: Current user, or null when signed out
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/User'
+                  - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/google:
+    post:
+      tags: [Authentication]
+      summary: Sign in with Google
+      description: Starts or completes Google OAuth and returns the signed-in user.
+      security: []
+      responses:
+        '200':
+          description: Signed-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/demo:
+    post:
+      tags: [Authentication]
+      summary: Sign in as a demo account
+      description: Development/demo-only equivalent of signInAs(userId).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Signed-in demo user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/demo/accounts:
+    get:
+      tags: [Authentication]
+      summary: List demo accounts
+      description: Development/demo-only list used by the frontend's account picker.
+      security: []
+      responses:
+        '200':
+          description: Available demo accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /auth/signout:
+    post:
+      tags: [Authentication]
+      summary: Sign out
+      responses:
+        '204':
+          description: Session ended
+
+  /events:
+    get:
+      tags: [Events]
+      summary: List the current user's events
+      responses:
+        '200':
+          description: Events the current user belongs to, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventSummary'
+    post:
+      tags: [Events]
+      summary: Create an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventInput'
+      responses:
+        '201':
+          description: Created event; the creator is also added as an active member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventRecord'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /events/{eventId}:
+    get:
+      tags: [Events]
+      summary: Get event details
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Event, members, expenses, and summary information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetail'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}/status:
+    patch:
+      tags: [Events]
+      summary: Change an event's status
+      description: Only the event creator may change status. COMPLETED locks the event; ACTIVE reopens it.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/EventStatus'
+      responses:
+        '200':
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventRecord'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /invites/{code}:
+    get:
+      tags: [Invitations]
+      summary: Preview an event invitation
+      description: The code is case-insensitive and is normalized by the backend.
+      parameters:
+        - $ref: '#/components/parameters/InviteCode'
+      responses:
+        '200':
+          description: Invitation preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitePreview'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [Invitations]
+      summary: Join an event by invitation code
+      description: Idempotent for an existing member; reactivates an inactive membership.
+      parameters:
+        - $ref: '#/components/parameters/InviteCode'
+      responses:
+        '200':
+          description: Event joined (or already joined)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}/members/{userId}/status:
+    patch:
+      tags: [Members]
+      summary: Activate or deactivate an event member
+      description: Only the event creator may manage members, and completed events are locked. Membership rows are never deleted.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/MemberStatus'
+      responses:
+        '200':
+          description: Updated member view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}/expenses:
+    post:
+      tags: [Expenses]
+      summary: Create an expense
+      description: Any event member may add an expense while the event is ACTIVE.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseInput'
+      responses:
+        '201':
+          description: Created expense view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /events/{eventId}/expenses/{expenseId}:
+    get:
+      tags: [Expenses]
+      summary: Get an expense
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '200':
+          description: Expense view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Expenses]
+      summary: Update an expense
+      description: The expense creator or event creator may update it while the event is ACTIVE.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/ExpenseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseInput'
+      responses:
+        '200':
+          description: Updated expense view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Expenses]
+      summary: Delete an expense
+      description: The expense creator or event creator may delete it while the event is ACTIVE.
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/ExpenseId'
+      responses:
+        '204':
+          description: Expense deleted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}/settlement:
+    get:
+      tags: [Settlement]
+      summary: Calculate event settlement
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      responses:
+        '200':
+          description: Per-member balances and greedy transfer plan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settlement'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string }
+    ExpenseId:
+      name: expenseId
+      in: path
+      required: true
+      schema: { type: string }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: string }
+    InviteCode:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  responses:
+    Unauthorized:
+      description: Authentication is required or the session is invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Authenticated user is not allowed to perform this operation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Requested resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Request failed domain validation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    User:
+      type: object
+      required: [id, displayName, email, authProvider, createdAt]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        email: { type: string, format: email }
+        authProvider: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    CurrencyCode:
+      type: string
+      enum: [KRW, USD, JPY, EUR]
+    EventStatus:
+      type: string
+      enum: [ACTIVE, COMPLETED]
+    MemberStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+    SplitType:
+      type: string
+      enum: [EQUAL, FIXED_PLUS_EQUAL]
+    SplitMode:
+      type: string
+      enum: [FIXED, AUTO]
+    Money:
+      type: integer
+      description: Integer amount in the event currency's minor unit.
+
+    EventRecord:
+      type: object
+      required: [id, name, createdBy, currency, status, inviteCode, createdAt, completedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        createdBy: { type: string }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+        status: { $ref: '#/components/schemas/EventStatus' }
+        inviteCode: { type: string }
+        createdAt: { type: string, format: date-time }
+        completedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: 'null' }
+
+    EventMember:
+      type: object
+      required: [id, eventId, userId, status, joinedAt, deactivatedAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        userId: { type: string }
+        status: { $ref: '#/components/schemas/MemberStatus' }
+        joinedAt: { type: string, format: date-time }
+        deactivatedAt:
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: 'null' }
+
+    MemberView:
+      allOf:
+        - $ref: '#/components/schemas/EventMember'
+        - type: object
+          required: [user, isCreator]
+          properties:
+            user: { $ref: '#/components/schemas/User' }
+            isCreator: { type: boolean }
+
+    Expense:
+      type: object
+      required: [id, eventId, title, totalAmount, payerId, createdBy, splitType, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        title: { type: string }
+        totalAmount: { $ref: '#/components/schemas/Money' }
+        payerId: { type: string }
+        createdBy: { type: string }
+        splitType: { $ref: '#/components/schemas/SplitType' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ExpenseItem:
+      type: object
+      required: [id, expenseId, name, amount, sortOrder]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        sortOrder: { type: integer, minimum: 0 }
+
+    ExpenseParticipant:
+      type: object
+      required: [id, expenseId, userId, mode, fixedAmount]
+      properties:
+        id: { type: string }
+        expenseId: { type: string }
+        userId: { type: string }
+        mode: { $ref: '#/components/schemas/SplitMode' }
+        fixedAmount:
+          oneOf:
+            - allOf:
+                - $ref: '#/components/schemas/Money'
+              minimum: 0
+            - { type: 'null' }
+
+    ExpenseView:
+      type: object
+      required: [expense, items, participants, payer, creator, shares, canEdit]
+      properties:
+        expense: { $ref: '#/components/schemas/Expense' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseItem' }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseParticipant' }
+        payer: { $ref: '#/components/schemas/User' }
+        creator: { $ref: '#/components/schemas/User' }
+        shares:
+          type: object
+          description: Map from user ID to final amount owed for this expense.
+          additionalProperties: { $ref: '#/components/schemas/Money' }
+        canEdit: { type: boolean }
+
+    EventSummary:
+      type: object
+      required: [event, memberCount, expenseCount, totalSpent, isCreator]
+      properties:
+        event: { $ref: '#/components/schemas/EventRecord' }
+        memberCount: { type: integer, minimum: 0 }
+        expenseCount: { type: integer, minimum: 0 }
+        totalSpent: { $ref: '#/components/schemas/Money' }
+        isCreator: { type: boolean }
+
+    EventDetail:
+      type: object
+      required: [event, members, expenses, totalSpent, isCreator, currentUserId]
+      properties:
+        event: { $ref: '#/components/schemas/EventRecord' }
+        members:
+          type: array
+          items: { $ref: '#/components/schemas/MemberView' }
+        expenses:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseView' }
+        totalSpent: { $ref: '#/components/schemas/Money' }
+        isCreator: { type: boolean }
+        currentUserId: { type: string }
+
+    InvitePreview:
+      type: object
+      required: [event, memberCount, alreadyMember]
+      properties:
+        event: { $ref: '#/components/schemas/EventRecord' }
+        memberCount: { type: integer, minimum: 0 }
+        alreadyMember: { type: boolean }
+
+    CreateEventInput:
+      type: object
+      required: [name, currency]
+      properties:
+        name: { type: string, minLength: 1 }
+        currency: { $ref: '#/components/schemas/CurrencyCode' }
+
+    ExpenseItemInput:
+      type: object
+      required: [name, amount]
+      properties:
+        name: { type: string }
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          minimum: 0
+
+    ExpenseParticipantInput:
+      type: object
+      required: [userId, mode, fixedAmount]
+      properties:
+        userId: { type: string }
+        mode: { $ref: '#/components/schemas/SplitMode' }
+        fixedAmount:
+          oneOf:
+            - allOf:
+                - $ref: '#/components/schemas/Money'
+              minimum: 0
+            - { type: 'null' }
+
+    ExpenseInput:
+      type: object
+      required: [title, totalAmount, payerId, splitType, items, participants]
+      properties:
+        title: { type: string, minLength: 1 }
+        totalAmount:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          minimum: 1
+        payerId: { type: string }
+        splitType: { $ref: '#/components/schemas/SplitType' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseItemInput' }
+        participants:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ExpenseParticipantInput' }
+      description: |
+        For FIXED_PLUS_EQUAL, fixed amounts must not exceed totalAmount. If all
+        participants are FIXED, their fixed amounts must sum exactly to
+        totalAmount. Detail item amounts may sum to less than totalAmount but
+        not more.
+
+    Balance:
+      type: object
+      required: [user, paid, owed, balance]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        paid: { $ref: '#/components/schemas/Money' }
+        owed: { $ref: '#/components/schemas/Money' }
+        balance: { type: integer, description: Paid minus owed; may be negative. }
+
+    Transfer:
+      type: object
+      required: [from, to, amount]
+      properties:
+        from: { $ref: '#/components/schemas/User' }
+        to: { $ref: '#/components/schemas/User' }
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          minimum: 1
+
+    Settlement:
+      type: object
+      required: [balances, transfers]
+      properties:
+        balances:
+          type: array
+          items: { $ref: '#/components/schemas/Balance' }
+        transfers:
+          type: array
+          items: { $ref: '#/components/schemas/Transfer' }
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
