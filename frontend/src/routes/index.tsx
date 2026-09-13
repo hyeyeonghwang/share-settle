@@ -1,10 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { api } from "@/services";
 import { ClientOnly } from "@/components/ClientOnly";
 import { useSession } from "@/hooks/useSession";
-import { Initial } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,19 +38,20 @@ function LoginBody() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useSession();
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (user) navigate({ to: "/events", replace: true });
   }, [user, navigate]);
 
-  const accounts = useQuery({
-    queryKey: ["demo-accounts"],
-    queryFn: () => api.listDemoAccounts(),
-  });
-
-  const signIn = useMutation({
-    mutationFn: (userId?: string) =>
-      userId ? api.signInAs(userId) : api.signInWithGoogle(),
+  const auth = useMutation({
+    mutationFn: () =>
+      mode === "register"
+        ? api.register({ displayName, email, password })
+        : api.signInWithPassword({ email, password }),
     onSuccess: async () => {
       await queryClient.invalidateQueries();
       navigate({ to: "/events", replace: true });
@@ -73,22 +73,63 @@ function LoginBody() {
           Shared costs, settled cleanly.
         </h1>
         <p className="mt-6 max-w-md text-sm leading-relaxed text-muted-foreground">
-          Create an event, add what everyone spent, split equally or with fixed amounts,
-          and get a short list of who pays whom.
+          Create an event, add what everyone spent, split equally or with fixed amounts, and get a
+          short list of who pays whom.
         </p>
 
-        <div className="mt-12 space-y-3">
+        <form
+          className="mt-12 space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            auth.mutate();
+          }}
+        >
+          {mode === "register" ? (
+            <input
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              placeholder="Display name"
+              required
+              minLength={1}
+              className="h-12 w-full rounded-xl border border-line bg-paper px-4 text-sm"
+            />
+          ) : null}
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email"
+            required
+            className="h-12 w-full rounded-xl border border-line bg-paper px-4 text-sm"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password (8+ characters to register)"
+            required
+            minLength={mode === "register" ? 8 : 1}
+            className="h-12 w-full rounded-xl border border-line bg-paper px-4 text-sm"
+          />
           <button
-            onClick={() => signIn.mutate(undefined)}
-            disabled={signIn.isPending}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-ink font-semibold text-paper transition-all hover:bg-ink/90 active:scale-[0.98] disabled:opacity-60"
+            type="submit"
+            disabled={auth.isPending}
+            className="flex h-14 w-full items-center justify-center rounded-xl bg-ink font-semibold text-paper transition-all hover:bg-ink/90 active:scale-[0.98] disabled:opacity-60"
           >
-            Continue with Google
+            {mode === "register" ? "Create account" : "Sign in"}
           </button>
-          <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-            Demo sign-in — no real account needed
-          </p>
-        </div>
+          {auth.isError ? <p className="text-sm text-red-700">{auth.error.message}</p> : null}
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "login" ? "register" : "login");
+              auth.reset();
+            }}
+            className="w-full py-2 text-sm text-muted-foreground underline underline-offset-4"
+          >
+            {mode === "login" ? "Create a new account" : "I already have an account"}
+          </button>
+        </form>
       </section>
 
       <div className="hidden justify-center lg:col-span-2 lg:flex">
@@ -99,32 +140,15 @@ function LoginBody() {
       </div>
 
       <section className="lg:col-span-5">
-        <span className="eyebrow">Switch account</span>
-        <h2 className="mt-1 text-3xl font-semibold tracking-tight">Demo participants</h2>
+        <span className="eyebrow">Your account</span>
+        <h2 className="mt-1 text-3xl font-semibold tracking-tight">Your travel folders</h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Sign in as any of these people to try the multi-user flow: creating events,
-          joining with a code and editing each other's expenses.
+          Create an account or sign in to load the travel folders where you are a member. Your
+          profile and session are stored in the backend database.
         </p>
-        <div className="mt-8 divide-y divide-line overflow-hidden rounded-2xl border border-line">
-          {(accounts.data ?? []).map((account) => (
-            <button
-              key={account.id}
-              onClick={() => signIn.mutate(account.id)}
-              disabled={signIn.isPending}
-              className="flex w-full items-center justify-between px-6 py-5 text-left transition-colors hover:bg-fill disabled:opacity-60"
-            >
-              <span className="flex items-center gap-3">
-                <Initial user={account} />
-                <span>
-                  <span className="block font-semibold">{account.displayName}</span>
-                  <span className="block font-mono text-[11px] text-muted-foreground">
-                    {account.email}
-                  </span>
-                </span>
-              </span>
-              <span className="font-mono text-[11px] text-muted-foreground">→</span>
-            </button>
-          ))}
+        <div className="mt-8 rounded-2xl border border-line p-6 text-sm text-muted-foreground">
+          Demo accounts remain available only through the explicit demo API; they are not used by
+          this login screen.
         </div>
       </section>
     </div>

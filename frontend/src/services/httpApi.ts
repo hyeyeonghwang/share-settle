@@ -74,6 +74,14 @@ export class HttpExpenseSplitterApi implements ExpenseSplitterApi {
     return this.request<User | null>("/auth/me");
   }
 
+  register(input: { displayName: string; email: string; password: string }): Promise<User> {
+    return this.signIn("/auth/register", input);
+  }
+
+  signInWithPassword(input: { email: string; password: string }): Promise<User> {
+    return this.signIn("/auth/login", input);
+  }
+
   signInWithGoogle(): Promise<User> {
     return this.signIn("/auth/google");
   }

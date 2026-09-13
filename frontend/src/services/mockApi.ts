@@ -46,17 +46,11 @@ function now(): string {
 export function makeInviteCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
-  for (let i = 0; i < 6; i += 1)
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < 6; i += 1) code += alphabet[Math.floor(Math.random() * alphabet.length)];
   return code;
 }
 
-function user(
-  uid: string,
-  displayName: string,
-  email: string,
-  createdAt: string,
-): User {
+function user(uid: string, displayName: string, email: string, createdAt: string): User {
   return { id: uid, displayName, email, authProvider: "google", createdAt };
 }
 
@@ -230,9 +224,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
   }
 
   private requireMembership(eventId: string, userId: string): EventMember {
-    const found = this.db.members.find(
-      (m) => m.eventId === eventId && m.userId === userId,
-    );
+    const found = this.db.members.find((m) => m.eventId === eventId && m.userId === userId);
     if (!found) throw new ServiceError("You are not a member of this event.");
     return found;
   }
@@ -252,9 +244,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
 
   private buildExpenseView(expense: Expense, viewerId: string): ExpenseView {
     const event = this.requireEvent(expense.eventId);
-    const participants = this.db.participants.filter(
-      (p) => p.expenseId === expense.id,
-    );
+    const participants = this.db.participants.filter((p) => p.expenseId === expense.id);
     const items = this.db.items
       .filter((i) => i.expenseId === expense.id)
       .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -268,8 +258,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
       this.memberOrder(expense.eventId),
     );
     const canEdit =
-      event.status === "ACTIVE" &&
-      (expense.createdBy === viewerId || event.createdBy === viewerId);
+      event.status === "ACTIVE" && (expense.createdBy === viewerId || event.createdBy === viewerId);
 
     return {
       expense,
@@ -284,9 +273,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
 
   private writeExpenseRelations(expenseId: string, input: ExpenseInput): void {
     this.db.items = this.db.items.filter((i) => i.expenseId !== expenseId);
-    this.db.participants = this.db.participants.filter(
-      (p) => p.expenseId !== expenseId,
-    );
+    this.db.participants = this.db.participants.filter((p) => p.expenseId !== expenseId);
     input.items.forEach((item, index) => {
       this.db.items.push({
         id: id("i"),
@@ -316,6 +303,24 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     return this.db.users.find((u) => u.id === this.db.currentUserId) ?? null;
   }
 
+  async register(input: { displayName: string; email: string; password: string }): Promise<User> {
+    if (this.db.users.some((u) => u.email === input.email))
+      throw new ServiceError("An account with this email already exists.");
+    const created = user(id("u"), input.displayName, input.email, now());
+    this.db.users.push(created);
+    this.db.currentUserId = created.id;
+    this.save();
+    return created;
+  }
+
+  async signInWithPassword(input: { email: string; password: string }): Promise<User> {
+    const found = this.db.users.find((u) => u.email === input.email);
+    if (!found) throw new ServiceError("Invalid email or password.");
+    this.db.currentUserId = found.id;
+    this.save();
+    return found;
+  }
+
   async signInWithGoogle(): Promise<User> {
     return this.signInAs("u_younghee");
   }
@@ -341,9 +346,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
 
   async listEvents(): Promise<EventSummary[]> {
     const me = this.requireUser();
-    const myEventIds = this.db.members
-      .filter((m) => m.userId === me.id)
-      .map((m) => m.eventId);
+    const myEventIds = this.db.members.filter((m) => m.userId === me.id).map((m) => m.eventId);
     return this.db.events
       .filter((e) => myEventIds.includes(e.id))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -363,8 +366,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const me = this.requireUser();
     if (!input.name.trim()) throw new ServiceError("Event name is required.");
     let inviteCode = makeInviteCode();
-    while (this.db.events.some((e) => e.inviteCode === inviteCode))
-      inviteCode = makeInviteCode();
+    while (this.db.events.some((e) => e.inviteCode === inviteCode)) inviteCode = makeInviteCode();
 
     const event: EventRecord = {
       id: id("e"),
@@ -445,18 +447,14 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     return {
       event,
       memberCount: this.db.members.filter((m) => m.eventId === event.id).length,
-      alreadyMember: this.db.members.some(
-        (m) => m.eventId === event.id && m.userId === me.id,
-      ),
+      alreadyMember: this.db.members.some((m) => m.eventId === event.id && m.userId === me.id),
     };
   }
 
   async joinEvent(code: string): Promise<EventRecord> {
     const me = this.requireUser();
     const event = this.eventByCode(code);
-    const existing = this.db.members.find(
-      (m) => m.eventId === event.id && m.userId === me.id,
-    );
+    const existing = this.db.members.find((m) => m.eventId === event.id && m.userId === me.id);
     if (existing) {
       if (existing.status === "INACTIVE") {
         existing.status = "ACTIVE";
@@ -488,8 +486,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const event = this.requireEvent(eventId);
     if (event.createdBy !== me.id)
       throw new ServiceError("Only the event creator can manage participants.");
-    if (event.status === "COMPLETED")
-      throw new ServiceError("This event is completed and locked.");
+    if (event.status === "COMPLETED") throw new ServiceError("This event is completed and locked.");
     const member = this.requireMembership(eventId, userId);
     member.status = status;
     member.deactivatedAt = status === "INACTIVE" ? now() : null;
@@ -506,9 +503,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
   async getExpense(eventId: string, expenseId: string): Promise<ExpenseView> {
     const me = this.requireUser();
     this.requireMembership(eventId, me.id);
-    const expense = this.db.expenses.find(
-      (x) => x.id === expenseId && x.eventId === eventId,
-    );
+    const expense = this.db.expenses.find((x) => x.id === expenseId && x.eventId === eventId);
     if (!expense) throw new ServiceError("Expense not found.");
     return this.buildExpenseView(expense, me.id);
   }
@@ -517,8 +512,7 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const me = this.requireUser();
     const event = this.requireEvent(eventId);
     this.requireMembership(eventId, me.id);
-    if (event.status === "COMPLETED")
-      throw new ServiceError("This event is completed and locked.");
+    if (event.status === "COMPLETED") throw new ServiceError("This event is completed and locked.");
 
     const errors = validateExpense(input, this.memberOrder(eventId));
     if (errors.length > 0) throw new ServiceError(errors[0]);
@@ -548,12 +542,9 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const me = this.requireUser();
     const event = this.requireEvent(eventId);
     this.requireMembership(eventId, me.id);
-    if (event.status === "COMPLETED")
-      throw new ServiceError("This event is completed and locked.");
+    if (event.status === "COMPLETED") throw new ServiceError("This event is completed and locked.");
 
-    const expense = this.db.expenses.find(
-      (x) => x.id === expenseId && x.eventId === eventId,
-    );
+    const expense = this.db.expenses.find((x) => x.id === expenseId && x.eventId === eventId);
     if (!expense) throw new ServiceError("This expense no longer exists.");
     if (expense.createdBy !== me.id && event.createdBy !== me.id)
       throw new ServiceError("You can only edit expenses you added.");
@@ -575,20 +566,15 @@ export class MockExpenseSplitterApi implements ExpenseSplitterApi {
     const me = this.requireUser();
     const event = this.requireEvent(eventId);
     this.requireMembership(eventId, me.id);
-    if (event.status === "COMPLETED")
-      throw new ServiceError("This event is completed and locked.");
-    const expense = this.db.expenses.find(
-      (x) => x.id === expenseId && x.eventId === eventId,
-    );
+    if (event.status === "COMPLETED") throw new ServiceError("This event is completed and locked.");
+    const expense = this.db.expenses.find((x) => x.id === expenseId && x.eventId === eventId);
     if (!expense) throw new ServiceError("This expense no longer exists.");
     if (expense.createdBy !== me.id && event.createdBy !== me.id)
       throw new ServiceError("You can only delete expenses you added.");
 
     this.db.expenses = this.db.expenses.filter((x) => x.id !== expenseId);
     this.db.items = this.db.items.filter((i) => i.expenseId !== expenseId);
-    this.db.participants = this.db.participants.filter(
-      (p) => p.expenseId !== expenseId,
-    );
+    this.db.participants = this.db.participants.filter((p) => p.expenseId !== expenseId);
     this.save();
   }
 

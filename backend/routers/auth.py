@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from ..auth import _bearer, optional_user, require_user
-from ..models import DemoSignIn, User
+from ..models import DemoSignIn, LoginInput, RegisterInput, User
 from ..store import store
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -16,6 +16,20 @@ def me(user: User | None = Depends(optional_user)) -> User | None:
 @router.post("/google", response_model=User)
 def google(response: Response) -> User:
     user, token = store.sign_in("u_younghee")
+    response.headers["X-Auth-Token"] = token
+    return user
+
+
+@router.post("/register", response_model=User, status_code=201)
+def register(body: RegisterInput, response: Response) -> User:
+    user, token = store.register(body)
+    response.headers["X-Auth-Token"] = token
+    return user
+
+
+@router.post("/login", response_model=User)
+def login(body: LoginInput, response: Response) -> User:
+    user, token = store.sign_in_with_password(body)
     response.headers["X-Auth-Token"] = token
     return user
 

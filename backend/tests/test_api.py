@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 from backend.auth import hash_password, verify_password
 from backend.main import app
-from backend.models import CreateEventInput, EventStatusInput, ExpenseInput, MemberStatusInput
+from backend.models import CreateEventInput, EventStatusInput, ExpenseInput, LoginInput, MemberStatusInput, RegisterInput
 from backend.routers.events import create_event, get_event, list_events, set_status
 from backend.routers.expenses import create, delete, update
 from backend.routers.invites import join, preview
@@ -27,6 +27,16 @@ def test_password_hashing_and_bearer_token_store():
     assert not verify_password("wrong", encoded)
     account, token = store.sign_in("u_younghee")
     assert store.user_for_token(token) == account
+
+
+def test_register_and_password_login_use_database_user():
+    account, token = store.register(RegisterInput(displayName="New User", email="new@example.com", password="a-secure-password"))
+    assert account.displayName == "New User"
+    assert store.user_for_token(token) == account
+    logged_in, login_token = store.sign_in_with_password(LoginInput(email="NEW@example.com", password="a-secure-password"))
+    assert logged_in.id == account.id
+    assert store.user_for_token(login_token) == account
+    assert account.id not in {member.userId for member in store.members_for_event("e_jeju")}
 
 
 def test_seeded_event_and_settlement():

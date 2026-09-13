@@ -33,6 +33,8 @@ export interface InvitePreview {
 export interface ExpenseSplitterApi {
   /* auth */
   getCurrentUser(): Promise<User | null>;
+  register(input: { displayName: string; email: string; password: string }): Promise<User>;
+  signInWithPassword(input: { email: string; password: string }): Promise<User>;
   signInWithGoogle(): Promise<User>;
   signInAs(userId: string): Promise<User>;
   signOut(): Promise<void>;
@@ -49,20 +51,12 @@ export interface ExpenseSplitterApi {
   joinEvent(code: string): Promise<EventRecord>;
 
   /* members */
-  setMemberStatus(
-    eventId: string,
-    userId: string,
-    status: MemberStatus,
-  ): Promise<MemberView>;
+  setMemberStatus(eventId: string, userId: string, status: MemberStatus): Promise<MemberView>;
 
   /* expenses */
   getExpense(eventId: string, expenseId: string): Promise<ExpenseView>;
   createExpense(eventId: string, input: ExpenseInput): Promise<ExpenseView>;
-  updateExpense(
-    eventId: string,
-    expenseId: string,
-    input: ExpenseInput,
-  ): Promise<ExpenseView>;
+  updateExpense(eventId: string, expenseId: string, input: ExpenseInput): Promise<ExpenseView>;
   deleteExpense(eventId: string, expenseId: string): Promise<void>;
 
   /* settlement */

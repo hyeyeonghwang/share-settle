@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 
-from .auth import hash_password
+from .auth import hash_password, verify_password
 from .database import Base, EventRow, ExpenseRow, ItemRow, MemberRow, ParticipantRow, SessionLocal, TokenRow, UserRow, engine
 from .models import *  # noqa: F403
 
@@ -45,10 +45,14 @@ class Store:
         with SessionLocal() as s: self._seed(s)
 
     def key(self, prefix: str) -> str: return f"{prefix}_{uuid4().hex[:10]}"
-    def _user(self, r) -> User: return User(id=r.id, displayName=r.display_name, email=r.email, authProvider=r.auth_provider, createdAt=r.created_at)  # noqa: F405
-    def _event(self, r) -> EventRecord: return EventRecord(id=r.id, name=r.name, createdBy=r.created_by, currency=r.currency, status=r.status, inviteCode=r.invite_code, createdAt=r.created_at, completedAt=r.completed_at)  # noqa: F405
-    def _member(self, r) -> EventMember: return EventMember(id=r.id, eventId=r.event_id, userId=r.user_id, status=r.status, joinedAt=r.joined_at, deactivatedAt=r.deactivated_at)  # noqa: F405
-    def _expense(self, r) -> Expense: return Expense(id=r.id, eventId=r.event_id, title=r.title, totalAmount=r.total_amount, payerId=r.payer_id, createdBy=r.created_by, splitType=r.split_type, createdAt=r.created_at, updatedAt=r.updated_at)  # noqa: F405
+    @staticmethod
+    def _utc(value: datetime | None) -> datetime | None:
+        return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
+
+    def _user(self, r) -> User: return User(id=r.id, displayName=r.display_name, email=r.email, authProvider=r.auth_provider, createdAt=self._utc(r.created_at))  # noqa: F405
+    def _event(self, r) -> EventRecord: return EventRecord(id=r.id, name=r.name, createdBy=r.created_by, currency=r.currency, status=r.status, inviteCode=r.invite_code, createdAt=self._utc(r.created_at), completedAt=self._utc(r.completed_at))  # noqa: F405
+    def _member(self, r) -> EventMember: return EventMember(id=r.id, eventId=r.event_id, userId=r.user_id, status=r.status, joinedAt=self._utc(r.joined_at), deactivatedAt=self._utc(r.deactivated_at))  # noqa: F405
+    def _expense(self, r) -> Expense: return Expense(id=r.id, eventId=r.event_id, title=r.title, totalAmount=r.total_amount, payerId=r.payer_id, createdBy=r.created_by, splitType=r.split_type, createdAt=self._utc(r.created_at), updatedAt=self._utc(r.updated_at))  # noqa: F405
 
     @property
     def users(self) -> dict[str, User]:  # compatibility for callers/tests
@@ -65,6 +69,23 @@ class Store:
             r = s.get(UserRow, user_id)
             if not r: raise HTTPException(404, "Unknown account.")
             token = secrets.token_urlsafe(32); s.add(TokenRow(token=token, user_id=user_id)); s.commit(); return self._user(r), token
+
+    def register(self, data: RegisterInput) -> tuple[User, str]:  # noqa: F405
+        with SessionLocal() as s:
+            if s.scalar(select(UserRow).where(UserRow.email == data.email)):
+                raise HTTPException(409, "An account with this email already exists.")
+            user = UserRow(id=self.key("u"), display_name=data.displayName, email=data.email, auth_provider="password", password_hash=hash_password(data.password), created_at=now())
+            token = secrets.token_urlsafe(32)
+            s.add_all([user, TokenRow(token=token, user_id=user.id)]); s.commit()
+            return self._user(user), token
+
+    def sign_in_with_password(self, data: LoginInput) -> tuple[User, str]:  # noqa: F405
+        with SessionLocal() as s:
+            user = s.scalar(select(UserRow).where(UserRow.email == data.email))
+            if not user or not verify_password(data.password, user.password_hash):
+                raise HTTPException(401, "Invalid email or password.")
+            token = secrets.token_urlsafe(32); s.add(TokenRow(token=token, user_id=user.id)); s.commit()
+            return self._user(user), token
     def event(self, event_id: str) -> EventRecord:
         with SessionLocal() as s: r = s.get(EventRow, event_id)
         if not r: raise HTTPException(404, "Event not found.")

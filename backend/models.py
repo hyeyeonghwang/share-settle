@@ -175,5 +175,34 @@ class DemoSignIn(BaseModel):
     userId: str
 
 
+class RegisterInput(BaseModel):
+    displayName: str = Field(min_length=1)
+    email: str = Field(min_length=3)
+    password: str = Field(min_length=8)
+
+    @field_validator("displayName", "email")
+    @classmethod
+    def non_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("This field is required.")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalized_email(cls, value: str) -> str:
+        return value.lower()
+
+
+class LoginInput(BaseModel):
+    email: str = Field(min_length=3)
+    password: str = Field(min_length=1)
+
+    @field_validator("email")
+    @classmethod
+    def normalized_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+
 class ErrorResponse(BaseModel):
     message: str
