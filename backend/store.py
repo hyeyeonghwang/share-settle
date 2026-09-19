@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 
 from .auth import hash_password, verify_password
-from .config import seed_demo_data
+from .config import auto_create_tables, seed_demo_data
 from .database import Base, EventRow, ExpenseRow, ItemRow, MemberRow, ParticipantRow, SessionLocal, TokenRow, UserRow, get_engine
 from .models import *  # noqa: F403
 
@@ -19,7 +19,8 @@ class Store:
     """Database-backed repository. The API layer only deals in Pydantic models."""
 
     def __init__(self) -> None:
-        Base.metadata.create_all(get_engine())
+        if auto_create_tables():
+            Base.metadata.create_all(get_engine())
         if not seed_demo_data():
             # The demo accounts share a published password; production starts empty.
             return

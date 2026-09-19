@@ -63,3 +63,16 @@ def cors_allow_origin_regex() -> str | None:
     if explicit is not None:
         return explicit or None
     return None if is_production() else LOCALHOST_ORIGIN_REGEX
+
+
+def auto_create_tables() -> bool:
+    """Whether startup creates missing tables with SQLAlchemy's create_all.
+
+    Convenient for SQLite and tests, but it only ever adds tables: it cannot
+    alter an existing one. Production uses Alembic instead so schema changes
+    are versioned and reviewable.
+    """
+    override = os.getenv("AUTO_CREATE_TABLES")
+    if override is not None:
+        return override.strip().lower() in {"1", "true", "yes", "on"}
+    return not is_production()
