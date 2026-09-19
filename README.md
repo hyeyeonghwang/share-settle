@@ -11,6 +11,12 @@ and settlement APIs. The Dockerfile builds the frontend with Node, copies the
 generated static files into a Python image, and serves both the web application
 and API from port `8080`.
 
+## Deploy to AWS
+
+[infra/README.md](infra/README.md) is the runbook: App Runner serving the
+container, a private RDS PostgreSQL instance, and Terraform in
+[infra/terraform](infra/terraform) to create both.
+
 ## Build and run with Docker
 
 From the repository root, run:
@@ -63,9 +69,19 @@ installed.
 Use the `postgresql+psycopg://` scheme. Bare `postgresql://` makes SQLAlchemy
 look for `psycopg2`, which is not installed.
 
-The schema is created on startup with `create_all`, so a fresh, empty database
-works without a migration step. There is no migration tooling yet: changing a
-model does not alter an existing database's tables.
+Outside production the schema is created on startup with `create_all`, so a
+fresh, empty database works without a migration step. `create_all` only ever
+adds tables, though, so production sets `AUTO_CREATE_TABLES=false` and lets
+Alembic own the schema. Add a migration after changing a model with:
+
+```bash
+uv run alembic revision --autogenerate -m "what changed"
+uv run alembic check        # should report no new operations
+uv run alembic upgrade head
+```
+
+The container runs `python -m backend.migrate` before uvicorn, which upgrades
+to head and first stamps any pre-Alembic database created by `create_all`.
 
 ### Run PostgreSQL with Docker Compose
 
@@ -139,3 +155,17 @@ npm run build
 Use `npm run dev` for the SPA development server; it proxies `/api` to the
 backend on `127.0.0.1:8000`. `npm run preview` previews the static build;
 for an integrated production check, use Docker.
+
+## Environment and demo mode
+
+`APP_ENV` decides whether the instance keeps the conveniences that make local
+work pleasant. The defaults below follow from it; each can be overridden
+individually. See [backend/config.py](backend/config.py).
+
+| Variable | Development | Production |
+| --- | --- | --- |
+| `DEMO_AUTH` | on | off — `/api/auth/google`, `/api/auth/demo` and `/api/auth/demo/accounts` sign you in with no credential, so they 404 |
+| `SEED_DEMO_DATA` | on | off — the seeded accounts share a published password |
+| `AUTO_CREATE_TABLES` | on | off — Alembic owns the schema |
+| `CORS_ALLOW_ORIGIN_REGEX` | localhost on any port | unset |
+| `CORS_ALLOW_ORIGINS` | empty | explicit allowlist, comma separated |
