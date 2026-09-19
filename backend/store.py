@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 
 from .auth import hash_password, verify_password
+from .config import seed_demo_data
 from .database import Base, EventRow, ExpenseRow, ItemRow, MemberRow, ParticipantRow, SessionLocal, TokenRow, UserRow, get_engine
 from .models import *  # noqa: F403
 
@@ -19,6 +20,9 @@ class Store:
 
     def __init__(self) -> None:
         Base.metadata.create_all(get_engine())
+        if not seed_demo_data():
+            # The demo accounts share a published password; production starts empty.
+            return
         with SessionLocal() as session:
             if session.scalar(select(func.count()).select_from(UserRow)) == 0:
                 self._seed(session)

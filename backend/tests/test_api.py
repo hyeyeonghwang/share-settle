@@ -86,3 +86,53 @@ def test_expense_validation_and_openapi_routes():
     paths = app.openapi()["paths"]
     assert "/api/events/{event_id}/expenses" in paths
     assert "/api/events/{event_id}/settlement" in paths
+
+
+def test_demo_routes_are_absent_in_production(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    monkeypatch.setenv("APP_ENV", "production")
+    with TestClient(app) as client:
+        assert client.post("/api/auth/google").status_code == 404
+        assert client.post("/api/auth/demo", json={"userId": "u_younghee"}).status_code == 404
+        assert client.get("/api/auth/demo/accounts").status_code == 404
+
+
+def test_demo_routes_are_available_by_default():
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        response = client.post("/api/auth/google")
+        assert response.status_code == 200
+        assert response.headers["X-Auth-Token"]
+
+
+def test_demo_auth_override_re_enables_routes_in_production(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DEMO_AUTH", "true")
+    with TestClient(app) as client:
+        assert client.post("/api/auth/google").status_code == 200
+
+
+def test_production_seeding_and_cors_defaults(monkeypatch):
+    from backend.config import cors_allow_origin_regex, cors_allow_origins, seed_demo_data
+
+    monkeypatch.setenv("APP_ENV", "production")
+    assert seed_demo_data() is False
+    assert cors_allow_origin_regex() is None
+    assert cors_allow_origins() == []
+
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://app.example.com, https://www.example.com/")
+    assert cors_allow_origins() == ["https://app.example.com", "https://www.example.com"]
+
+    monkeypatch.delenv("APP_ENV")
+    assert seed_demo_data() is True
+    assert "localhost" in cors_allow_origin_regex()

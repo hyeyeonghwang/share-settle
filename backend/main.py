@@ -4,12 +4,14 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from .config import cors_allow_origin_regex, cors_allow_origins
 from .routers import auth, events, expenses, invites, members, settlement
 
 app = FastAPI(title="Share & Settle API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$",
+    allow_origins=cors_allow_origins(),
+    allow_origin_regex=cors_allow_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
