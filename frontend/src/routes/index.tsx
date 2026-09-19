@@ -39,9 +39,6 @@ function LoginBody() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useSession();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
   useEffect(() => {
     if (user) void navigate({ to: "/events", replace: true });
@@ -49,10 +46,12 @@ function LoginBody() {
 
   const auth = useMutation({
     retry: false,
-    mutationFn: () =>
-      mode === "register"
-        ? api.register({ displayName, email, password })
-        : api.signInWithPassword({ email, password }),
+    mutationFn: (input: {
+      mode: "login" | "register";
+      displayName: string;
+      email: string;
+      password: string;
+    }) => (input.mode === "register" ? api.register(input) : api.signInWithPassword(input)),
     onSuccess: (user) => {
       queryClient.setQueryData(["session"], user);
     },
@@ -64,15 +63,21 @@ function LoginBody() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (auth.isPending) return;
+    // Read one submission snapshot. Typing does not update React/auth/router state.
+    const fields = new FormData(event.currentTarget);
+    const input = {
+      mode,
+      displayName: String(fields.get("displayName") ?? "").trim(),
+      email: String(fields.get("email") ?? "").trim(),
+      password: String(fields.get("password") ?? ""),
+    };
     console.log("Sign in submitted", {
       mode,
-      email,
-      displayName: mode === "register" ? displayName : undefined,
-      passwordProvided: Boolean(password),
+      passwordProvided: Boolean(input.password),
     });
 
     try {
-      await auth.mutateAsync();
+      await auth.mutateAsync(input);
     } catch (error) {
       // React Query stores the error in auth.isError; log it here as well so
       // a failed request is visible while debugging a Docker deployment.
@@ -102,8 +107,9 @@ function LoginBody() {
         <form className="mt-12 space-y-3" onSubmit={handleSubmit}>
           {mode === "register" ? (
             <input
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
+              name="displayName"
+              autoComplete="name"
+              aria-label="Display name"
               placeholder="Display name"
               required
               minLength={1}
@@ -112,16 +118,18 @@ function LoginBody() {
           ) : null}
           <input
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            name="email"
+            autoComplete="username"
+            aria-label="Email"
             placeholder="Email"
             required
             className="h-12 w-full rounded-xl border border-line bg-paper px-4 text-sm"
           />
           <input
             type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            name="password"
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
+            aria-label="Password"
             placeholder="Password (8+ characters to register)"
             required
             minLength={mode === "register" ? 8 : 1}
@@ -133,8 +141,6 @@ function LoginBody() {
             onClick={() => {
               console.log("Sign in clicked", {
                 mode,
-                email,
-                passwordProvided: Boolean(password),
               });
             }}
             className="flex h-14 w-full items-center justify-center rounded-xl bg-ink font-semibold text-paper transition-all hover:bg-ink/90 active:scale-[0.98] disabled:opacity-60"
@@ -144,6 +150,7 @@ function LoginBody() {
           {auth.isError ? <p className="text-sm text-red-700">{auth.error.message}</p> : null}
           <button
             type="button"
+            disabled={auth.isPending}
             onClick={() => {
               setMode(mode === "login" ? "register" : "login");
               auth.reset();
