@@ -9,47 +9,37 @@ The application has a React/TanStack frontend and a FastAPI backend backed by
 SQLAlchemy. The backend provides authentication, event, member, expense, invite,
 and settlement APIs. The Dockerfile builds the frontend with Node, copies the
 generated static files into a Python image, and serves both the web application
-and API from port `8000`.
+and API from port `8080`.
 
-## Build the Docker image
+## Build and run with Docker
 
 From the repository root, run:
 
 ```bash
-docker build -t share-settle:latest .
+docker build -t share-settle:latest . && \
+docker run --rm --name share-settle \
+  -p 8001:8080 \
+  -e DATABASE_URL=sqlite:////data/share_settle.db \
+  -v share-settle-data:/data \
+  share-settle:latest
 ```
 
 The build requires Docker and internet access to download the Node and Python
 dependencies.
 
-## Run the container
+Open <http://localhost:8001>. The host port is `8001`; the container listens on
+`8080`. Browser API requests use `/api` on the same origin. No Node server runs
+in the final image: FastAPI serves the Vite SPA and API together.
 
-For a quick local run using the container filesystem for SQLite data:
+Docker creates `share-settle-data` automatically and reuses it on subsequent
+runs, including with `--rm`. Do not delete the volume if you want to keep data.
+Data from a previous container's unmounted database is not migrated automatically.
 
-```bash
-docker run --rm \
-  --name share-settle \
-  -p 8000:8000 \
-  share-settle:latest
-```
-
-Open <http://localhost:8000> in a browser. The API is available under
-`http://localhost:8000/api`.
-
-## Run with persistent SQLite data
-
-Use a named Docker volume so database data survives container recreation:
-
-```bash
-docker volume create share-settle-data
-
-docker run -d \
-  --name share-settle \
-  -p 8000:8000 \
-  -e DATABASE_URL=sqlite:////data/share_settle.db \
-  -v share-settle-data:/data \
-  share-settle:latest
-```
+Before replacing an existing container, stop it with `docker stop share-settle`.
+If it was created without `--rm`, remove the stopped container with
+`docker rm share-settle` (after preserving any data not stored in the volume).
+Then repeat the command above to build and run the new image. Add `-d` to
+`docker run` for background execution.
 
 Check the container logs or stop it with:
 
@@ -79,3 +69,7 @@ cd frontend
 npm ci
 npm run build
 ```
+
+Use `npm run dev` for the SPA development server; it proxies `/api` to the
+backend on `127.0.0.1:8000`. `npm run preview` previews the static build;
+for an integrated production check, use Docker.

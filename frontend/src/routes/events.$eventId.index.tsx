@@ -1,12 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { api } from "@/services";
 import { AppShell } from "@/components/AppShell";
 import { ClientOnly } from "@/components/ClientOnly";
 import { Amount, EmptyNote, Eyebrow, Initial, PageHeader } from "@/components/ui-bits";
-import { useSession } from "@/hooks/useSession";
+import { useRequiredSession } from "@/hooks/useSession";
 
 export const Route = createFileRoute("/events/$eventId/")({
   head: () => ({
@@ -37,11 +36,7 @@ function EventBody() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: user, isLoading: sessionLoading } = useSession();
-
-  useEffect(() => {
-    if (!sessionLoading && !user) navigate({ to: "/", replace: true });
-  }, [user, sessionLoading, navigate]);
+  const { data: user } = useRequiredSession();
 
   const detail = useQuery({
     queryKey: ["event", eventId],

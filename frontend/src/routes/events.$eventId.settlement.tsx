@@ -1,11 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { api } from "@/services";
 import { AppShell } from "@/components/AppShell";
 import { ClientOnly } from "@/components/ClientOnly";
 import { Amount, EmptyNote, Eyebrow, Initial, PageHeader } from "@/components/ui-bits";
-import { useSession } from "@/hooks/useSession";
+import { useRequiredSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/events/$eventId/settlement")({
@@ -36,11 +35,7 @@ export const Route = createFileRoute("/events/$eventId/settlement")({
 function SettlementBody() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
-  const { data: user, isLoading: sessionLoading } = useSession();
-
-  useEffect(() => {
-    if (!sessionLoading && !user) navigate({ to: "/", replace: true });
-  }, [user, sessionLoading, navigate]);
+  const { data: user } = useRequiredSession();
 
   const detail = useQuery({
     queryKey: ["event", eventId],

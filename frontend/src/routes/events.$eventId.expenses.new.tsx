@@ -1,13 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { api } from "@/services";
 import { AppShell } from "@/components/AppShell";
 import { ClientOnly } from "@/components/ClientOnly";
 import { EmptyNote, PageHeader } from "@/components/ui-bits";
 import { ExpenseForm } from "@/components/ExpenseForm";
-import { useSession } from "@/hooks/useSession";
+import { useRequiredSession } from "@/hooks/useSession";
 import type { ExpenseInput } from "@/domain/types";
 
 export const Route = createFileRoute("/events/$eventId/expenses/new")({
@@ -39,11 +38,7 @@ function NewExpenseBody() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: user, isLoading: sessionLoading } = useSession();
-
-  useEffect(() => {
-    if (!sessionLoading && !user) navigate({ to: "/", replace: true });
-  }, [user, sessionLoading, navigate]);
+  const { data: user } = useRequiredSession();
 
   const detail = useQuery({
     queryKey: ["event", eventId],

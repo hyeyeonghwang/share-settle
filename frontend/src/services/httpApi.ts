@@ -24,7 +24,7 @@ export class HttpExpenseSplitterApi implements ExpenseSplitterApi {
   private token = initialToken();
   private readonly baseUrl: string;
 
-  constructor(baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api") {
+  constructor(baseUrl = import.meta.env.VITE_API_BASE_URL?.trim() || "/api") {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
@@ -41,7 +41,11 @@ export class HttpExpenseSplitterApi implements ExpenseSplitterApi {
     if (init.body) headers.set("Content-Type", "application/json");
     if (this.token) headers.set("Authorization", `Bearer ${this.token}`);
 
-    const response = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...init,
+      headers,
+      signal: init.signal ?? AbortSignal.timeout(15000),
+    });
     if (response.status === 401) this.setToken(null);
     if (!response.ok) {
       let message = `Request failed (${response.status}).`;
@@ -62,6 +66,7 @@ export class HttpExpenseSplitterApi implements ExpenseSplitterApi {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
       let message = `Request failed (${response.status}).`;

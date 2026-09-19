@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/services";
 import { AppShell } from "@/components/AppShell";
@@ -8,7 +8,7 @@ import { ClientOnly } from "@/components/ClientOnly";
 import { Amount, EmptyNote, Eyebrow } from "@/components/ui-bits";
 import { CURRENCIES, CURRENCY_CODES } from "@/domain/money";
 import type { CurrencyCode, EventSummary } from "@/domain/types";
-import { useSession } from "@/hooks/useSession";
+import { useRequiredSession } from "@/hooks/useSession";
 
 export const Route = createFileRoute("/events/")({
   head: () => ({
@@ -37,11 +37,7 @@ export const Route = createFileRoute("/events/")({
 function EventsBody() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: user, isLoading: sessionLoading } = useSession();
-
-  useEffect(() => {
-    if (!sessionLoading && !user) navigate({ to: "/", replace: true });
-  }, [user, sessionLoading, navigate]);
+  const { data: user } = useRequiredSession();
 
   const events = useQuery({
     queryKey: ["events"],

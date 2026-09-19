@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { api } from "@/services";
 import { ClientOnly } from "@/components/ClientOnly";
 import { useSession } from "@/hooks/useSession";
@@ -44,19 +44,41 @@ function LoginBody() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (user) navigate({ to: "/events", replace: true });
+    if (user) void navigate({ to: "/events", replace: true });
   }, [user, navigate]);
 
   const auth = useMutation({
+    retry: false,
     mutationFn: () =>
       mode === "register"
         ? api.register({ displayName, email, password })
         : api.signInWithPassword({ email, password }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries();
-      navigate({ to: "/events", replace: true });
+    onSuccess: (user) => {
+      queryClient.setQueryData(["session"], user);
+    },
+    onError: (error) => {
+      console.error("Sign in request failed", error);
     },
   });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (auth.isPending) return;
+    console.log("Sign in submitted", {
+      mode,
+      email,
+      displayName: mode === "register" ? displayName : undefined,
+      passwordProvided: Boolean(password),
+    });
+
+    try {
+      await auth.mutateAsync();
+    } catch (error) {
+      // React Query stores the error in auth.isError; log it here as well so
+      // a failed request is visible while debugging a Docker deployment.
+      console.error("Sign in failed", error);
+    }
+  }
 
   if (isLoading || user) return null;
 
@@ -77,13 +99,7 @@ function LoginBody() {
           short list of who pays whom.
         </p>
 
-        <form
-          className="mt-12 space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            auth.mutate();
-          }}
-        >
+        <form className="mt-12 space-y-3" onSubmit={handleSubmit}>
           {mode === "register" ? (
             <input
               value={displayName}
@@ -114,9 +130,16 @@ function LoginBody() {
           <button
             type="submit"
             disabled={auth.isPending}
+            onClick={() => {
+              console.log("Sign in clicked", {
+                mode,
+                email,
+                passwordProvided: Boolean(password),
+              });
+            }}
             className="flex h-14 w-full items-center justify-center rounded-xl bg-ink font-semibold text-paper transition-all hover:bg-ink/90 active:scale-[0.98] disabled:opacity-60"
           >
-            {mode === "register" ? "Create account" : "Sign in"}
+            {auth.isPending ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}
           </button>
           {auth.isError ? <p className="text-sm text-red-700">{auth.error.message}</p> : null}
           <button
