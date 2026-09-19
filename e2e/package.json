@@ -1,0 +1,14 @@
+{
+  "name": "share-settle-e2e",
+  "private": true,
+  "description": "End-to-end tests that drive the docker-compose stack with Playwright.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "install-browsers": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
