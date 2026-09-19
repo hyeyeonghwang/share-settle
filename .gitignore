@@ -2,3 +2,10 @@ __pycache__/
 *.py[cod]
 share_settle.db
 .env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+crash.log

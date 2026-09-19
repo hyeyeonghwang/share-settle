@@ -8,7 +8,7 @@ set -e
 
 if [ "${RUN_MIGRATIONS:-1}" = "1" ]; then
   echo "Running database migrations..."
-  alembic upgrade head
+  python -m backend.migrate
 fi
 
 exec uvicorn backend.main:app --host 0.0.0.0 --port "${PORT:-8080}"

@@ -1,0 +1,18 @@
+# Copy to terraform.tfvars and adjust.
+
+region      = "ap-northeast-2"
+environment = "prod"
+
+# Tag pushed by infra/deploy.sh. "latest" is fine to start; an immutable tag
+# (a git SHA) makes rollbacks a matter of changing this value and re-applying.
+image_tag = "latest"
+
+# Smallest useful sizes. Raise if requests queue.
+app_cpu           = "0.5 vCPU"
+app_memory        = "1 GB"
+db_instance_class = "db.t4g.micro"
+
+# The SPA is served from the same origin as the API, so this is usually empty.
+# cors_allow_origins = ["https://app.example.com"]
+
+# custom_domain = "app.example.com"
