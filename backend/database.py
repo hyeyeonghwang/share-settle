@@ -78,15 +78,46 @@ class ParticipantRow(Base):
     fixed_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+DEFAULT_DATABASE_URL = "sqlite:///./share_settle.db"
+
+
 def database_url() -> str:
-    return os.getenv("DATABASE_URL", "sqlite:///./share_settle.db")
+    """Connection string for the app database.
+
+    Defaults to a local SQLite file. Point DATABASE_URL at Postgres to use it, e.g.
+    postgresql+psycopg://sdip:sdip@localhost:8001/sdip
+    """
+    return os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
 
 
 def make_engine(url: str | None = None):
     url = url or database_url()
-    kwargs = {"connect_args": {"check_same_thread": False}} if url.startswith("sqlite") else {}
+    if url.startswith("sqlite"):
+        kwargs = {"connect_args": {"check_same_thread": False}}
+    else:
+        # Server-side databases drop idle connections; pre-ping so a stale pooled
+        # connection is recycled instead of surfacing as a request failure.
+        kwargs = {"pool_pre_ping": True}
     return create_engine(url, **kwargs)
 
 
-engine = make_engine()
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+_engine = make_engine()
+SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
+
+
+def get_engine():
+    """The engine currently bound to SessionLocal."""
+    return _engine
+
+
+def configure_engine(url: str | None = None):
+    """Rebind the app to a different database. Used by tests and startup wiring.
+
+    SessionLocal is reconfigured in place so modules that imported it by name
+    keep pointing at the live engine.
+    """
+    global _engine
+    _engine.dispose()
+    _engine = make_engine(url)
+    SessionLocal.configure(bind=_engine)
+    return _engine

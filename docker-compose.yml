@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: share-settle-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sdip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sdip}
+      POSTGRES_DB: ${POSTGRES_DB:-sdip}
+    ports:
+      # Host 5432 -> Postgres 5432. Lets you connect from the host with
+      # DATABASE_URL=postgresql+psycopg://sdip:sdip@localhost:5432/sdip
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # postgres:16-alpine stores its data here; mounting anywhere else does not persist.
+      - share-settle-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sdip} -d ${POSTGRES_DB:-sdip}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: share-settle-app
+    environment:
+      # Inside the compose network the database is reachable as db:5432.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sdip}:${POSTGRES_PASSWORD:-sdip}@db:5432/${POSTGRES_DB:-sdip}
+    ports:
+      - "${APP_PORT:-8001}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  share-settle-data:

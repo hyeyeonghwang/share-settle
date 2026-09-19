@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 
 from .auth import hash_password, verify_password
-from .database import Base, EventRow, ExpenseRow, ItemRow, MemberRow, ParticipantRow, SessionLocal, TokenRow, UserRow, engine
+from .database import Base, EventRow, ExpenseRow, ItemRow, MemberRow, ParticipantRow, SessionLocal, TokenRow, UserRow, get_engine
 from .models import *  # noqa: F403
 
 
@@ -18,7 +18,7 @@ class Store:
     """Database-backed repository. The API layer only deals in Pydantic models."""
 
     def __init__(self) -> None:
-        Base.metadata.create_all(engine)
+        Base.metadata.create_all(get_engine())
         with SessionLocal() as session:
             if session.scalar(select(func.count()).select_from(UserRow)) == 0:
                 self._seed(session)
@@ -40,8 +40,8 @@ class Store:
         s.commit()
 
     def reset(self) -> None:
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
+        Base.metadata.drop_all(get_engine())
+        Base.metadata.create_all(get_engine())
         with SessionLocal() as s: self._seed(s)
 
     def key(self, prefix: str) -> str: return f"{prefix}_{uuid4().hex[:10]}"
